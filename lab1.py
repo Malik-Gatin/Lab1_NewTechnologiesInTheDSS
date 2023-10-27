@@ -50,7 +50,13 @@ def get_query_parameter(url, parameter_name):
     query_parameters = parse_qs(parsed_url.query)
     return query_parameters.get(parameter_name, [None])[0]
 
-def download_images(query, class_name, num_images=1000, full_size=False):
+def download_images(query, num_images=1000, full_size=False):
+    class_name = query
+    if(full_size):
+        class_name += "_full-size"
+    else:
+        class_name += "_thumb"
+
     create_class_directory(class_name)
     driver = configure_webdriver()
 
@@ -112,6 +118,11 @@ logging.basicConfig(filename="image_download.log", level=logging.INFO, format="%
 
 # Загрузка миниатюр изображений для класса "tiger"
 
+# Загрузка полноразмерных изображений для классов "leopard" и "tiger"
+download_images("tiger", num_images=5, full_size=True)
+download_images("leopard", num_images=5, full_size=True)
 
-# Загрузка полноразмерных изображений для класса "leopard"
-download_images("leopard", "leopard", num_images=40, full_size=True)
+# Загрузка миниатюр для классов "leopard" и "tiger"
+download_images("tiger", num_images=30, full_size=False)
+download_images("leopard", num_images=30, full_size=False)
+
