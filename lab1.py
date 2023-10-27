@@ -15,8 +15,11 @@ if not os.path.exists("dataset"):
 def create_class_directory(class_name):
     # Создаем папку для класса, если она не существует
     class_dir = os.path.join("dataset", class_name)
-    if not os.path.exists(class_dir):
-        os.mkdir(class_dir)
+    try:
+        if not os.path.exists(class_dir):
+            os.mkdir(class_dir)
+    except Exception as e:
+        logging.error(f"Error when creating a folder {class_name}: {str(e)}")    
 
 def configure_webdriver():
     # Настройки браузера (headless режим)
@@ -33,16 +36,19 @@ def wait_for_element(driver, selector):
         logging.error(f"Ошибка ожидания элементов: {str(e)}")
 
 def download_image(img_url, img_path):
-    try:
-        img_extension = img_url.split(".")[-1]
-        img_ext = "jpg" in img_extension or "thumbs" in img_extension
-        if img_ext:
-            img_data = requests.get(img_url).content
-            with open(img_path, "wb") as img_file:
-                img_file.write(img_data)
-            return True
-    except Exception as e:
-        pass
+    max_retry = 2  # Максимальное количество попыток загрузки изображения
+    for _ in range(max_retry):
+        try:
+            img_extension = img_url.split(".")[-1]
+            img_ext = "jpg" in img_extension or "thumbs" in img_extension
+            if img_ext:
+                img_data = requests.get(img_url).content
+                with open(img_path, "wb") as img_file:
+                    img_file.write(img_data)
+                return True
+        except Exception as e:
+            logging.warning(f"Ошибка при загрузке изображения: {str(e)}")
+    logging.error(f"Не удалось загрузить изображение: {img_url}")
     return False
 
 def get_query_parameter(url, parameter_name):
@@ -101,12 +107,12 @@ def download_images(query, num_images=1000, full_size=False):
         try:
             # Прокручиваем страницу вниз, чтобы увидеть кнопку "Далее"
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-
             next_button = driver.find_element(By.CSS_SELECTOR, "a.serp-advanced__item")
             if next_button:
                 next_button.click()
                 time.sleep(2)
         except Exception as e:
+            logging.warning("The 'Next' button was not found or an error occurred when pressing it!")
             # Если кнопка "Далее" не найдена, выходим из цикла
             break
 
@@ -119,12 +125,12 @@ if __name__ == "__main__":
 
     try:
         # Загрузка полноразмерных изображений для классов "leopard" и "tiger"
-        download_images("tiger", num_images=1, full_size=True)
-        download_images("leopard", num_images=1, full_size=True)
+        download_images("tiger", num_images=5, full_size=True)
+        download_images("leopard", num_images=5, full_size=True)
 
         # Загрузка миниатюр для классов "leopard" и "tiger"
-        download_images("tiger", num_images=5, full_size=False)
-        download_images("leopard", num_images=5, full_size=False)
+        download_images("tiger", num_images=30, full_size=False)
+        download_images("leopard", num_images=30, full_size=False)
     except Exception as e:
         logging.error(f"An error has occurred: {str(e)}")
 
