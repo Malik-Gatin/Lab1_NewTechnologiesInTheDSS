@@ -92,7 +92,7 @@ def download_images(query, num_images=1000, full_size=False):
                         continue
 
                     count += 1
-                    logging.info(f"Загружено изображение {count} для класса {class_name}")
+                    logging.info(f"Uploaded image {count} for class {class_name}")
                 else:
                     continue
             except Exception as e:
@@ -113,16 +113,18 @@ def download_images(query, num_images=1000, full_size=False):
     # Завершаем сеанс браузера
     driver.quit()
 
-# Настройка логирования
-logging.basicConfig(filename="image_download.log", level=logging.INFO, format="%(asctime)s - %(levelname)s: %(message)s")
+if __name__ == "__main__":
+    # Настройка логирования
+    logging.basicConfig(filename="image_download.log", level=logging.INFO, format="%(asctime)s - %(levelname)s: %(message)s")
 
-# Загрузка миниатюр изображений для класса "tiger"
+    try:
+        # Загрузка полноразмерных изображений для классов "leopard" и "tiger"
+        download_images("tiger", num_images=1, full_size=True)
+        download_images("leopard", num_images=1, full_size=True)
 
-# Загрузка полноразмерных изображений для классов "leopard" и "tiger"
-download_images("tiger", num_images=5, full_size=True)
-download_images("leopard", num_images=5, full_size=True)
-
-# Загрузка миниатюр для классов "leopard" и "tiger"
-download_images("tiger", num_images=30, full_size=False)
-download_images("leopard", num_images=30, full_size=False)
+        # Загрузка миниатюр для классов "leopard" и "tiger"
+        download_images("tiger", num_images=5, full_size=False)
+        download_images("leopard", num_images=5, full_size=False)
+    except Exception as e:
+        logging.error(f"An error has occurred: {str(e)}")
 
