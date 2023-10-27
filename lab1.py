@@ -12,6 +12,7 @@ from urllib.parse import urlparse, parse_qs
 if not os.path.exists("dataset"):
     os.mkdir("dataset")
 
+# Создание папки для класса, если она не существует
 def create_class_directory(class_name):
     # Создаем папку для класса, если она не существует
     class_dir = os.path.join("dataset", class_name)
@@ -21,20 +22,22 @@ def create_class_directory(class_name):
     except Exception as e:
         logging.error(f"Error when creating a folder {class_name}: {str(e)}")    
 
+# Настройка веб-драйвера
 def configure_webdriver():
     # Настройки браузера (headless режим)
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
     return webdriver.Chrome(options=options)
 
+# Ожидание загрузки элементов на странице
 def wait_for_element(driver, selector):
-    # Ожидание загрузки элементов на странице
     wait = WebDriverWait(driver, 10)
     try:
         wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
     except Exception as e:
         logging.error(f"Ошибка ожидания элементов: {str(e)}")
 
+# Загрузка изображения
 def download_image(img_url, img_path):
     max_retry = 2  # Максимальное количество попыток загрузки изображения
     for _ in range(max_retry):
@@ -51,11 +54,13 @@ def download_image(img_url, img_path):
     logging.error(f"Не удалось загрузить изображение: {img_url}")
     return False
 
+# Получение значения параметра запроса из URL
 def get_query_parameter(url, parameter_name):
     parsed_url = urlparse(url)
     query_parameters = parse_qs(parsed_url.query)
     return query_parameters.get(parameter_name, [None])[0]
 
+# Загружает изображение по указанному URL-адресу
 def download_images(query, num_images=1000, full_size=False):
     class_name = query
     if(full_size):
