@@ -12,6 +12,7 @@ import time
 from urllib.parse import urlparse, parse_qs
 
 IMAGES_FIELDS = ['date', 'image_url', 'file_name']
+DIRECTORY =  os.path.join("dataset")
 
 # Настройка веб-драйвера
 def configure_webdriver():
@@ -35,7 +36,7 @@ def wait_for_element(driver, selector):
         logging.error(f"Ошибка ожидания элементов: {str(e)}")
 
 # Создание папки для класса и файла CSV, если они не существуют
-def create_class_directory(class_name):
+def create_class_directory(class_name: str, csv_name:str = ""):
     try:
         # Создаем папку для класса, если она не существует
         class_dir = os.path.join("dataset", class_name)
@@ -46,7 +47,10 @@ def create_class_directory(class_name):
             logging.info(f"Папка {class_name} уже существует")
 
         # Создаем файл CSV для класса, если он не существует
-        csv_file_path = os.path.join(class_dir, f"{class_name}.csv")
+        if(csv_name!=""):
+            csv_file_path = os.path.join(class_dir, f"{csv_name}.csv")
+        else:
+            csv_file_path = os.path.join(class_dir, f"{class_name}.csv")
         if not os.path.exists(csv_file_path):
             with open(csv_file_path, mode='w', newline='') as file:
                 csv_writer = csv.writer(file)
@@ -57,7 +61,8 @@ def create_class_directory(class_name):
         logging.error(f"Ошибка при создании файла или папки {class_name}: {str(e)}")    
 
 # создание пути до файла .csv
-def create_file_path(class_name:str, full_size:bool) -> str:
+def create_file_path(class_n:str, full_size:bool) -> str:
+    class_name = class_n
     if(full_size):
         class_name += "_full-size"
     else:
@@ -165,6 +170,23 @@ def next_data(df: pd.DataFrame, index: int) -> tuple[str]:
         return tuple(df.iloc[index]) #возвращает строки по целочисленным значениям
     return None
 
+# ШАГ 1
+# Написать скрипт, который разобъёт исходный csv файл на файл X.csv и Y.csv, 
+# с одинаковым количеством строк. Первый будет содержать даты, второй - данные.
+
+# Запись других дат в .csv файл
+def write_another_dates(df: pd.DataFrame, start_date: datetime) -> pd.DataFrame:
+    df['date'] = [start_date + pd.DateOffset(days=i) for i in range(len(df))]
+    return df
+# Разделение данных на 2 .csv файла: с датами и остальными данными
+def separation_date_by_data(df: pd.DataFrame) -> None:
+    df_date = df['date']
+    df_data = df.drop('date', axis=1)
+    create_class_directory("csv_date_by_data", "X")
+    create_class_directory("csv_date_by_data", "Y")
+    df_date.to_csv(os.path.join(DIRECTORY,'csv_date_by_data\\X.csv'), index=False)
+    df_data.to_csv(os.path.join(DIRECTORY, 'csv_date_by_data\\Y.csv'), index=False)
+
 # загрузка всех изображений
 def download_all_images():
     # Загрузка полноразмерных изображений для классов "leopard" и "tiger"
@@ -183,6 +205,9 @@ if __name__ == "__main__":
         #download_all_images()
         csv_file = create_file_path("tiger", True)
         df = create_data_frame_from_csv(csv_file, IMAGES_FIELDS)
+        write_another_dates(df, datetime(2023, 1, 1))
+        print(df)
+        separation_date_by_data(df)
 
         print('ВЫВОД next_data() :')
         for index in range(0, len(df)):
