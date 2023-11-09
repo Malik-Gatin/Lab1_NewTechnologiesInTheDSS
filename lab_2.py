@@ -2,6 +2,7 @@ import os
 import requests
 import csv
 import pandas as pd
+from typing import Union
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -180,7 +181,7 @@ def write_another_dates(df: pd.DataFrame, start_date: datetime) -> pd.DataFrame:
     return df
 
 # Разделение данных на 2 .csv файла: с датами и остальными данными
-def separate_date_by_data(df: pd.DataFrame) -> None:
+def separate_data_into_date_and_data(df: pd.DataFrame) -> None:
     df_date = df['date']
     df_data = df.drop('date', axis=1)
     dir_x = create_class_directory("csv_date_by_data", "X")
@@ -221,6 +222,15 @@ def separate_data_by_weeks(df: pd.DataFrame) -> None:
         dir = create_class_directory('csv_weeks', filename)
         group.to_csv(dir, index=False)
 
+# Шаг 4 Написать скрипт, содержащий функцию, принимающую на вход дату 
+# (тип datetime) и возвращающий данные для этой даты (из файла) или
+#  None если данных для этой даты нет.
+def get_data_by_date(df: pd.DataFrame, date: datetime) -> Union[None, pd.DataFrame]:
+    data = df[df['date'] == date]
+    if data.empty:
+        return None
+    else:
+        return data.drop(columns=['date'])
 
 # загрузка всех изображений
 def download_all_images():
@@ -238,18 +248,20 @@ if __name__ == "__main__":
 
     try:
         #download_all_images()
-        csv_file = create_file_path("tiger", True)
-        df = create_data_frame_from_csv(csv_file, IMAGES_FIELDS)
+        csv_file_tiger_full = create_file_path("tiger", True)
+        df = create_data_frame_from_csv(csv_file_tiger_full , IMAGES_FIELDS)
         write_another_dates(df, datetime(2023, 1, 1))
-        print(df)
-        separate_date_by_data(df)
-        separate_data_by_years(df)
-        separate_data_by_weeks(df)
+        #print(df)
+        #separate_data_into_date_and_data(df)
+        #separate_data_by_years(df)
+        #separate_data_by_weeks(df)
+        print('ПОЛУЧЕНИЕ ДАННЫХ ПО ДАТЕ :')
+        print(get_data_by_date(df, datetime(2024, 1, 25)))
 
         print('ВЫВОД next_data() :')
-        for index in range(0, len(df)):
-            print(next_data(df, index))
+       #for index in range(0, len(df)):
+        #    print(next_data(df, index))
 
     except Exception as e:
-        logging.error(f"An error has occurred: {str(e)}")
+        logging.error(f"Произошла ошибка: {str(e)}")
         print(str(e))
