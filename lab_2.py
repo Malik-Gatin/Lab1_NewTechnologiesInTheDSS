@@ -11,6 +11,8 @@ from datetime import datetime
 import time
 from urllib.parse import urlparse, parse_qs
 
+IMAGES_FIELDS = ['date', 'image_url', 'file_name']
+
 # Настройка веб-драйвера
 def configure_webdriver():
     # Настройки браузера (headless режим)
@@ -48,13 +50,21 @@ def create_class_directory(class_name):
         if not os.path.exists(csv_file_path):
             with open(csv_file_path, mode='w', newline='') as file:
                 csv_writer = csv.writer(file)
-                # Здесь вы можете добавить заголовки, если это необходимо
             logging.info(f"Создан файл CSV для {class_name}")
         else:
             logging.info(f"Файл CSV уже существует для {class_name}")
     except Exception as e:
         logging.error(f"Ошибка при создании файла или папки {class_name}: {str(e)}")    
 
+# создание пути до файла .csv
+def create_file_path(class_name:str, full_size:bool) -> str:
+    if(full_size):
+        class_name += "_full-size"
+    else:
+        class_name += "_thumb"
+    return os.path.join("dataset", class_name, f"{class_name}.csv")
+
+# запись в .csv файл
 def write_csv_file(path: str, data: list) -> None:
     mode = 'w' if not os.path.exists(path) else 'a'
     with open(path, mode, newline='') as csv_file:
@@ -81,10 +91,6 @@ def download_image(img_url, img_path):
 # Загружает изображение по указанному URL-адресу
 def download_images(query, num_images=1000, full_size=False):
     class_name = query
-    if(full_size):
-        class_name += "_full-size"
-    else:
-        class_name += "_thumb"
 
     create_class_directory(class_name)
     driver = configure_webdriver()
@@ -94,9 +100,9 @@ def download_images(query, num_images=1000, full_size=False):
     driver.get(url)
 
     count = 0
-    csv_file_path = os.path.join("dataset", class_name, f"{class_name}.csv")
+    csv_file_path = create_file_path(class_name, full_size)
 
-    write_csv_file(csv_file_path, ['date', 'image_url', 'file_name'])
+    write_csv_file(csv_file_path, IMAGES_FIELDS)
 
     while count < num_images:
         # Выбор селектора для изображения (миниатюра или полноразмерное)
@@ -132,18 +138,56 @@ def download_images(query, num_images=1000, full_size=False):
         time.sleep(5)
     # Завершаем сеанс браузера
     driver.quit()   
+     
+# проверка на существование полей в .csv файлу
+def check_csv_on_valid_fields(df: pd.DataFrame, required_fields: list) -> bool:
+    for field in required_fields:
+        if field not in df.columns:
+            return False
+    return True
+     
+#  Читает данные из файла в формате CSV, выполняет проверку наличия необходимых полей и объединяет их в один DataFrame.
+def create_data_frame_from_csv(file: list, fields: list) -> pd.DataFrame:
+    df_list = []
+    data = pd.read_csv(file)
+      # Проверка наличия необходимых полей в данных
+    if check_csv_on_valid_fields(data, fields):
+        data['date'] = pd.to_datetime(data['date'])
+        df_list.append(data)
+    else:
+        print(f'Ошибка: Файл {file} не содержит необходимых полей')
+    df = pd.concat(df_list, ignore_index=True)
+    return df
+     
+# проход по данным
+def next_data(df: pd.DataFrame, index: int) -> tuple[str]:
+    if index < len(df):
+        return tuple(df.iloc[index]) #возвращает строки по целочисленным значениям
+    return None
+
+# загрузка всех изображений
+def download_all_images():
+    # Загрузка полноразмерных изображений для классов "leopard" и "tiger"
+    download_images("tiger", num_images=20, full_size=True)
+    download_images("leopard", num_images=20, full_size=True)
+
+    # Загрузка миниатюр для классов "leopard" и "tiger"
+    download_images("tiger", num_images=10, full_size=False)
+    download_images("leopard", num_images=100, full_size=False)
 
 if __name__ == "__main__":
     # Настройка логирования
     logging.basicConfig(filename="image_download.log", level=logging.INFO, format="%(asctime)s - %(levelname)s: %(message)s")
 
     try:
-        # Загрузка полноразмерных изображений для классов "leopard" и "tiger"
-        download_images("tiger", num_images=20, full_size=True)
-        download_images("leopard", num_images=20, full_size=True)
+        #download_all_images()
+        csv_file = create_file_path("tiger", True)
+        df = create_data_frame_from_csv(csv_file, IMAGES_FIELDS)
 
-        # Загрузка миниатюр для классов "leopard" и "tiger"
-        download_images("tiger", num_images=100, full_size=False)
-        download_images("leopard", num_images=100, full_size=False)
+        print('ВЫВОД next_data() :')
+        for index in range(0, len(df)):
+            print(next_data(df, index))
+
     except Exception as e:
         logging.error(f"An error has occurred: {str(e)}")
+        print(str(e))
