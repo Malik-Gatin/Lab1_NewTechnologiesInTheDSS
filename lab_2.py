@@ -12,7 +12,6 @@ import time
 from urllib.parse import urlparse, parse_qs
 
 IMAGES_FIELDS = ['date', 'image_url', 'file_name']
-DIRECTORY =  os.path.join("dataset")
 
 # Настройка веб-драйвера
 def configure_webdriver():
@@ -36,7 +35,7 @@ def wait_for_element(driver, selector):
         logging.error(f"Ошибка ожидания элементов: {str(e)}")
 
 # Создание папки для класса и файла CSV, если они не существуют
-def create_class_directory(class_name: str, csv_name:str = ""):
+def create_class_directory(class_name: str, csv_name:str = "") -> str:
     try:
         # Создаем папку для класса, если она не существует
         class_dir = os.path.join("dataset", class_name)
@@ -57,8 +56,9 @@ def create_class_directory(class_name: str, csv_name:str = ""):
             logging.info(f"Создан файл CSV для {class_name}")
         else:
             logging.info(f"Файл CSV уже существует для {class_name}")
+        return csv_file_path
     except Exception as e:
-        logging.error(f"Ошибка при создании файла или папки {class_name}: {str(e)}")    
+        logging.error(f"Ошибка при создании файла или папки {class_name}: {str(e)}")  
 
 # создание пути до файла .csv
 def create_file_path(class_n:str, full_size:bool) -> str:
@@ -178,14 +178,31 @@ def next_data(df: pd.DataFrame, index: int) -> tuple[str]:
 def write_another_dates(df: pd.DataFrame, start_date: datetime) -> pd.DataFrame:
     df['date'] = [start_date + pd.DateOffset(days=i) for i in range(len(df))]
     return df
+
 # Разделение данных на 2 .csv файла: с датами и остальными данными
-def separation_date_by_data(df: pd.DataFrame) -> None:
+def separate_date_by_data(df: pd.DataFrame) -> None:
     df_date = df['date']
     df_data = df.drop('date', axis=1)
-    create_class_directory("csv_date_by_data", "X")
-    create_class_directory("csv_date_by_data", "Y")
-    df_date.to_csv(os.path.join(DIRECTORY,'csv_date_by_data\\X.csv'), index=False)
-    df_data.to_csv(os.path.join(DIRECTORY, 'csv_date_by_data\\Y.csv'), index=False)
+    dir_x = create_class_directory("csv_date_by_data", "X")
+    dir_y = create_class_directory("csv_date_by_data", "Y")
+    df_date.to_csv(dir_x, index=False)
+    df_data.to_csv(dir_y, index=False)
+
+# ШАГ 2 
+# Написать скрипт, который разобъёт исходный csv файл на N файлов, где каждый
+# отдельный файл будет соответствовать одному году. Файлы называются по первой
+# и последней дате, которую они содержат. (если файл содержит данные с первого
+# января 2001 по 31 декабря 2001, то файл назвать 20010101_20011231.csv)
+def separate_data_by_years(df: pd.DataFrame) -> None:
+    df['date'] = pd.to_datetime(df['date'])
+
+    for year, group in df.groupby(df['date'].dt.year):
+        start_date = group['date'].min().strftime('%Y%m%d')
+        end_date = group['date'].max().strftime('%Y%m%d')
+        filename = f'{start_date}_{end_date}.csv'
+        dir = create_class_directory('csv_years', filename)
+        group.to_csv(dir, index=False)
+
 
 # загрузка всех изображений
 def download_all_images():
@@ -207,7 +224,8 @@ if __name__ == "__main__":
         df = create_data_frame_from_csv(csv_file, IMAGES_FIELDS)
         write_another_dates(df, datetime(2023, 1, 1))
         print(df)
-        separation_date_by_data(df)
+        separate_date_by_data(df)
+        separate_data_by_years(df)
 
         print('ВЫВОД next_data() :')
         for index in range(0, len(df)):
