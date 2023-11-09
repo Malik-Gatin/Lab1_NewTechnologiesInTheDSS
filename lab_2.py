@@ -231,6 +231,24 @@ def get_data_by_date(df: pd.DataFrame, date: datetime) -> Union[None, pd.DataFra
         return None
     else:
         return data.drop(columns=['date'])
+    
+
+# Итератор
+class Iterator:
+    def __init__(self, df: pd.DataFrame):
+        self.df = df
+        self.counter = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.counter < len(self.df):
+            result = tuple(self.df.iloc[self.counter])
+            self.counter += 1
+            return result
+        else:
+            raise StopIteration    
 
 # загрузка всех изображений
 def download_all_images():
@@ -258,9 +276,14 @@ if __name__ == "__main__":
         print('ПОЛУЧЕНИЕ ДАННЫХ ПО ДАТЕ :')
         print(get_data_by_date(df, datetime(2024, 1, 25)))
 
-        print('ВЫВОД next_data() :')
-       #for index in range(0, len(df)):
-        #    print(next_data(df, index))
+        #print('ВЫВОД next_data() :')
+        #for index in range(0, len(df)):
+            #print(next_data(df, index))
+
+        print('ВЫВОД итератора() :')
+        iterator = Iterator(df)
+        for item in iterator:
+            print(item)
 
     except Exception as e:
         logging.error(f"Произошла ошибка: {str(e)}")
