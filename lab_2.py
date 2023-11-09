@@ -193,14 +193,32 @@ def separate_date_by_data(df: pd.DataFrame) -> None:
 # отдельный файл будет соответствовать одному году. Файлы называются по первой
 # и последней дате, которую они содержат. (если файл содержит данные с первого
 # января 2001 по 31 декабря 2001, то файл назвать 20010101_20011231.csv)
+
+# Разделение данных на N .csv файлов по годам
 def separate_data_by_years(df: pd.DataFrame) -> None:
     df['date'] = pd.to_datetime(df['date'])
 
     for year, group in df.groupby(df['date'].dt.year):
         start_date = group['date'].min().strftime('%Y%m%d')
         end_date = group['date'].max().strftime('%Y%m%d')
-        filename = f'{start_date}_{end_date}.csv'
+        filename = f'{start_date}_{end_date}'
         dir = create_class_directory('csv_years', filename)
+        group.to_csv(dir, index=False)
+
+# ШАГ 3
+# Написать скрипт, который разобъёт исходный csv файл на N файлов, где каждый
+# отдельный файл будет соответствовать одной неделе. Файлы называются по первой
+# и последней дате, которую они содержат.
+
+# Разделение данных на N .csv файлов по неделям
+def separate_data_by_weeks(df: pd.DataFrame) -> None:
+    df['date'] = pd.to_datetime(df['date'])
+
+    for (year, week), group in df.groupby([df['date'].dt.isocalendar().year, df['date'].dt.isocalendar().week]):
+        start_date = group['date'].min().strftime('%Y%m%d')
+        end_date = group['date'].max().strftime('%Y%m%d')
+        filename = f'{start_date}_{end_date}'
+        dir = create_class_directory('csv_weeks', filename)
         group.to_csv(dir, index=False)
 
 
@@ -226,6 +244,7 @@ if __name__ == "__main__":
         print(df)
         separate_date_by_data(df)
         separate_data_by_years(df)
+        separate_data_by_weeks(df)
 
         print('ВЫВОД next_data() :')
         for index in range(0, len(df)):
