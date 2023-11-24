@@ -1,0 +1,1 @@
+IMAGES_FIELDS = ['date', 'image_url', 'file_name']

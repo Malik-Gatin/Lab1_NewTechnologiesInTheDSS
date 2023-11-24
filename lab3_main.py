@@ -3,6 +3,8 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QPushButton,
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QDateEdit, QDialogButtonBox,QLineEdit, QCheckBox, QSpinBox
 import pandas as pd
 from datetime import datetime
+from download_images import *
+from work_with_data import *
 
 class ImageDownloadDialog(QDialog):
     def __init__(self, parent=None):
@@ -39,7 +41,7 @@ class ImageDownloadDialog(QDialog):
         class_name = self.class_name_input.text()
         is_full_size = self.full_size_checkbox.isChecked()
         image_count = self.image_count_input.value()
-        #download_images(class_name, image_count, is_full_size)
+        download_images(class_name, image_count, is_full_size)
 
         # Выполнить операцию загрузки с полученной информацией
         # Например: download_images(class_name, is_full_size, image_count)
@@ -204,7 +206,7 @@ class ImageDownloadApp(QMainWindow):
         if self.dataset is not None:
             try:
                 date_to_get = datetime.strptime(date_str, "%Y-%m-%d")
-                data = self.get_data_by_date(date_to_get)
+                data = get_data_by_date(date_to_get)
                 if data is not None:
                     print(data)
                 else:
