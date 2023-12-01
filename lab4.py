@@ -249,7 +249,7 @@ def plot_histograms(histograms):
 
 def main():
     pd.set_option('display.max_colwidth', None)
-    # 1-2.
+    # 1-2. Создаем файл-аннотацию и формируем объект DataFrame
     copy_and_rename_dataset_with_annotation(DATASET_DIRECTORY, ANNOTATION_DIRECTORY)
     annotation_file = os.path.join(ANNOTATION_DIRECTORY, FILE_NAME_ANNOTATION)
     print(f"Датасет успешно скопирован и переименован в {ANNOTATION_DIRECTORY}")
