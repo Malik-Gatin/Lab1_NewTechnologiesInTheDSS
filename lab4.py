@@ -7,6 +7,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+import cv2
 
 IMAGES_FIELDS = ['date', 'image_url', 'file_name', 'file_path']
 ANNOTATION_FIELDS = ['absolute_path', 'class_labell']
@@ -176,6 +177,61 @@ def filter_by_dimensions_and_class(df, label, max_width, max_height):
                      (df['image_height'] <= max_height)].copy()    
     return filtered_df
 
+# 8. Выполнить группировку DataFrame по метке класса с вычислением максимального, минимального и среднего значения
+# по количеству пикселей (необходимо будет добавить новый столбец, значение для которого вычисляется по уже заполненным столбцам.
+# О подсчете количества пикселей говорилось на лекции OpenCV). Распознавание изображений. *Построить график 3-5 изображений.
+def add_pixel_count(df):
+    # Добавляет столбец с количеством пикселей в DataFrame
+    df['pixel_count'] = df['image_height'] * df['image_width']
+    return df
+
+def calculate_pixel_stats(df):
+    # Вычисляет статистику по количеству пикселей для каждой метки класса
+    pixel_stats = df.groupby('class_label')['pixel_count'].agg(['max', 'min', 'mean'])
+    return pixel_stats
+
+def plot_sample_images(df, label, num_images=5):
+    filtered_df = filter_by_class_label(df, label)
+    sample_images = filtered_df.head(num_images).reset_index(drop=True)
+    
+    fig, axes = plt.subplots(1, len(sample_images), figsize=(15, 5))
+    
+    for idx, row in sample_images.iterrows():
+        img_path = row['absolute_path']  # Путь к изображению
+        img = plt.imread(img_path)
+        axes[idx].imshow(img)
+        axes[idx].axis('off')
+        axes[idx].set_title(row['class_label'])  # Метка класса
+        
+    plt.tight_layout()
+    plt.show()
+    
+# 9. Написать функцию, которая с использованием средств библиотеки OpenCV строит гистограмму. 
+# На вход функция принимает DataFrame и метку класса, на выходе - три массива 
+# (каждый массив соответствует значениям гистограммы по каждому каналу). 
+# Выбор изображения из DataFrame, для которого будет строиться гистограмма, сделать случайным (numpy или аналогичные для random).
+
+def get_random_image_histogram(df, class_label):
+    # Фильтрация DataFrame по метке класса
+    class_images = filter_by_class_label(df, class_label)
+
+    # Выбор случайного изображения
+    random_index = np.random.randint(0, len(class_images))
+    random_image_path = class_images.iloc[random_index]['absolute_path']
+
+    # Загрузка изображения с помощью OpenCV
+    image = cv2.imread(random_image_path)
+
+    # Разделение изображения на каналы
+    b, g, r = cv2.split(image)
+
+    # Вычисление гистограмм для каждого канала
+    hist_r = cv2.calcHist([r], [0], None, [256], [0, 256])
+    hist_g = cv2.calcHist([g], [0], None, [256], [0, 256])
+    hist_b = cv2.calcHist([b], [0], None, [256], [0, 256])
+
+    return [hist_r, hist_g, hist_b]
+
 def main():
     pd.set_option('display.max_colwidth', None)
     #copy_and_rename_dataset_with_annotation(DATASET_FOLDER, OUTPUT_FOLDER)
@@ -208,6 +264,19 @@ def main():
     filtered_data = filter_by_dimensions_and_class(df, label = 0,  max_width = 300, max_height = 480)
     print(filtered_data)
     
+    # 8.
+    # Добавляем столбец с количеством пикселей
+    df_with_pixels = add_pixel_count(df)
+    print(df)
+    # Вычисляем статистику по количеству пикселей
+    pixel_statistics = calculate_pixel_stats(df_with_pixels)
+    print(pixel_statistics)
+    # Построим график нескольких изображений
+    plot_sample_images(df, label = 'tiger_thumb')
+    
+    # 9.
+    histograms = get_random_image_histogram(df, 'tiger_thumb')
+
     
 # Вызов функции main
 if __name__ == "__main__":
