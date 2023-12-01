@@ -1,5 +1,4 @@
 import pandas as pd
-from datetime import datetime
    
 # проход по данным
 def next_data(df: pd.DataFrame, index: int) -> tuple[str]:

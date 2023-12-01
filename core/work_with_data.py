@@ -1,8 +1,11 @@
+import sys
+sys.path.append('C:/Users/gatin/Desktop/MalikMagistracy/NewTechnologiesInDSS/lab3/core')
 import pandas as pd
 from datetime import datetime
 from typing import Union
-from download_images import create_class_directory
-from constants import IMAGES_FIELDS
+from download_images import *
+
+IMAGES_FIELDS = ['date', 'image_url', 'file_name', 'image_path']
 
 # проверка на существование полей в .csv файле
 def check_csv_on_valid_fields(df: pd.DataFrame, required_fields: list) -> bool:
@@ -17,7 +20,7 @@ def create_data_frame_from_csv(file: list, fields: list) -> pd.DataFrame:
     data = pd.read_csv(file)
       # Проверка наличия необходимых полей в данных
     if check_csv_on_valid_fields(data, fields):
-        data['date'] = pd.to_datetime(data['date'])
+        data['date'] = pd.to_datetime(data['date'], format='%Y-%m-%d')
         df_list.append(data)
     else:
         print(f'Ошибка: Файл {file} не содержит необходимых полей')
@@ -37,8 +40,8 @@ def write_another_dates(df: pd.DataFrame, start_date: datetime) -> pd.DataFrame:
 def separate_data_into_date_and_data(df: pd.DataFrame) -> None:
     df_date = df['date']
     df_data = df.drop('date', axis=1)
-    dir_x = create_class_directory("csv_date_by_data", "X")
-    dir_y = create_class_directory("csv_date_by_data", "Y")
+    dir_x = create_class_directory(class_n="csv_date_by_data",csv_name="X")
+    dir_y = create_class_directory(class_n="csv_date_by_data",csv_name="Y")
     df_date.to_csv(dir_x, index=False)
     df_data.to_csv(dir_y, index=False)
 
@@ -56,7 +59,7 @@ def separate_data_by_years(df: pd.DataFrame) -> None:
         start_date = group['date'].min().strftime('%Y%m%d')
         end_date = group['date'].max().strftime('%Y%m%d')
         filename = f'{start_date}_{end_date}'
-        dir = create_class_directory('csv_years', filename)
+        dir = create_class_directory(class_n='csv_years', csv_name=filename)
         group.to_csv(dir, index=False)
 
 # ШАГ 3
@@ -72,7 +75,7 @@ def separate_data_by_weeks(df: pd.DataFrame) -> None:
         start_date = group['date'].min().strftime('%Y%m%d')
         end_date = group['date'].max().strftime('%Y%m%d')
         filename = f'{start_date}_{end_date}'
-        dir = create_class_directory('csv_weeks', filename)
+        dir = create_class_directory(class_n='csv_weeks', csv_name=filename)
         group.to_csv(dir, index=False)
 
 # Шаг 4 Написать скрипт, содержащий функцию, принимающую на вход дату 

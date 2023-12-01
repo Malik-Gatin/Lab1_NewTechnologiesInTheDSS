@@ -9,7 +9,8 @@ import logging
 from datetime import datetime
 import time
 from urllib.parse import urlparse, parse_qs
-from constants import IMAGES_FIELDS
+
+IMAGES_FIELDS = ['date', 'image_url', 'file_name', 'image_path']
 
 # Настройка веб-драйвера
 def configure_webdriver():
@@ -33,12 +34,12 @@ def wait_for_element(driver, selector):
         logging.error(f"Ошибка ожидания элементов: {str(e)}")
 
 # Создание папки для класса и файла CSV, если они не существуют
-def create_class_directory(class_n: str, full_size:bool, csv_name:str = "") -> str:
+def create_class_directory(class_n: str, full_size:bool = None, csv_name:str = "") -> str:
     class_name = class_n
     try:
         if(full_size):
             class_name += "_full-size"
-        else:
+        elif(full_size!=None):
             class_name += "_thumb"
         # Создаем папку для класса, если она не существует
         class_dir = os.path.join("dataset", class_name)
@@ -64,11 +65,11 @@ def create_class_directory(class_n: str, full_size:bool, csv_name:str = "") -> s
         logging.error(f"Ошибка при создании файла или папки {class_name}: {str(e)}")  
 
 # создание пути до файла .csv
-def create_file_path(class_n:str, full_size:bool) -> str:
+def create_file_path(class_n:str, full_size:bool = None) -> str:
     class_name = class_n
     if(full_size):
         class_name += "_full-size"
-    else:
+    elif(full_size!=None):
         class_name += "_thumb"
     return os.path.join("dataset", class_name, f"{class_name}.csv")
 
@@ -102,7 +103,6 @@ def download_images(query, num_images=1000, full_size=False):
 
     create_class_directory(class_name, full_size)
     driver = configure_webdriver()
-
     # URL для поиска изображений
     url = f"https://yandex.ru/images/search?text={query}&type=photo"
     driver.get(url)
@@ -134,7 +134,7 @@ def download_images(query, num_images=1000, full_size=False):
 
                     if download_image(img_url, img_path):
                         count += 1
-                        write_csv_file(csv_file_path, [datetime.now().strftime('%Y-%m-%d'), img_url, filename])
+                        write_csv_file(csv_file_path, [datetime.now().strftime('%Y-%m-%d'), img_url, filename, img_path])
                     logging.info(f"Uploaded image {count} for class {class_name}")
                 else:
                     continue

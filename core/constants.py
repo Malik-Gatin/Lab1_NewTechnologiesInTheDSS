@@ -1,1 +1,1 @@
-IMAGES_FIELDS = ['date', 'image_url', 'file_name']
+IMAGES_FIELDS = ['date', 'image_url', 'file_name', 'image_path']
