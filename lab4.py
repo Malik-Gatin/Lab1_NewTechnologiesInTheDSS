@@ -6,35 +6,30 @@ import random
 from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 import cv2
 
 IMAGES_FIELDS = ['date', 'image_url', 'file_name', 'file_path']
-ANNOTATION_FIELDS = ['absolute_path', 'class_labell']
-OUTPUT_FOLDER = "dataset_annotations"
-CSV_FILE_NAME = "dataset_annotations.csv"
-DATASET_FOLDER = "dataset"
+ANNOTATION_FIELDS = ['absolute_path', 'class_label']
+ANNOTATION_DIRECTORY = "dataset_annotations"
+FILE_NAME_ANNOTATION = "dataset_annotations.csv"
+DATASET_DIRECTORY = "dataset"
 IMAGE_STATS = ['image_height', 'image_width', 'image_channels']
 
-def copy_and_rename_dataset_with_annotation(dataset_folder, output_folder):
-    """
-    Копирует файлы из датасета в другую директорию, переименовывая их случайным номером и создает файл аннотацию.
 
-    :param dataset_folder: Путь к папке с датасетом
-    :param output_folder: Путь куда будет скопирован датасет
-    :return:
-    """
-
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
+# Копирует файлы из датасета в другую директорию, переименовывая их случайным номером и создает файл аннотацию.
+# dataset_directory: Путь к папке с датасетом
+# output_directory: Путь куда будет скопирован датасет
+def copy_and_rename_dataset_with_annotation(dataset_directory, output_directory):
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
 
     # Создаем CSV-файл для аннотаций
-    annotation_file = os.path.join(output_folder, CSV_FILE_NAME)
+    annotation_file = os.path.join(output_directory, FILE_NAME_ANNOTATION)
     with open(annotation_file, 'w', newline='') as csv_file:
         csv_writer = csv.writer(csv_file)
         csv_writer.writerow(ANNOTATION_FIELDS)
 
-        for root, _, files in os.walk(dataset_folder):
+        for root, _, files in os.walk(dataset_directory):
             for file in files:
                 # Получаем путь к файлу
                 path = os.path.join(root, file)
@@ -48,7 +43,7 @@ def copy_and_rename_dataset_with_annotation(dataset_folder, output_folder):
                 new_filename = f"{random_number}.jpg"
 
                 # Полный путь к новому файлу в выходной директории
-                new_file_path = os.path.join(output_folder, new_filename)
+                new_file_path = os.path.join(output_directory, new_filename)
 
                 # Копируем файл и переименовываем
                 shutil.copy(path, new_file_path)
@@ -73,7 +68,7 @@ def create_data_frame_from_csv(file_path: str, fields: list) -> pd.DataFrame:
     data = pd.read_csv(file_path)
     # Именование колонок
     # Проверка наличия необходимых полей в данных
-    if check_csv_on_valid_fields(data, fields):
+    if not check_csv_on_valid_fields(data, fields):
         print(f'Ошибка: Файл {file_path} не содержит какого-то из необходимых полей {fields}')
         return pd.DataFrame()  # Возвращаем пустой DataFrame при отсутствии обязательных полей
     if 'date' in data.columns:
@@ -211,13 +206,16 @@ def plot_sample_images(df, label, num_images=5):
 # (каждый массив соответствует значениям гистограммы по каждому каналу). 
 # Выбор изображения из DataFrame, для которого будет строиться гистограмма, сделать случайным (numpy или аналогичные для random).
 
-def get_random_image_histogram(df, class_label):
+def get_random_image(df, class_label):
     # Фильтрация DataFrame по метке класса
     class_images = filter_by_class_label(df, class_label)
 
     # Выбор случайного изображения
     random_index = np.random.randint(0, len(class_images))
-    random_image_path = class_images.iloc[random_index]['absolute_path']
+    return class_images.iloc[random_index]['absolute_path']
+
+def get_random_image_histogram(df, class_label):
+    random_image_path = get_random_image(df, class_label)
 
     # Загрузка изображения с помощью OpenCV
     image = cv2.imread(random_image_path)
@@ -229,54 +227,84 @@ def get_random_image_histogram(df, class_label):
     hist_r = cv2.calcHist([r], [0], None, [256], [0, 256])
     hist_g = cv2.calcHist([g], [0], None, [256], [0, 256])
     hist_b = cv2.calcHist([b], [0], None, [256], [0, 256])
-
+    print ("\nВыбранное изображение для гистограммы:\n" + random_image_path)
     return [hist_r, hist_g, hist_b]
+
+# 10. С использованием средств библиотеки matplotlib или seaborn выполнить отрисовку гистограмм,
+# которые возвращаются из функции пункта 9. Графики и оси должны иметь соответствующие подписи.
+def plot_histograms(histograms):
+    channels = ['R', 'G', 'B']
+    colors = ['red', 'green', 'blue']
+    
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    
+    for i, channel in enumerate(channels):
+        axes[i].hist(histograms[i], bins=256, color=colors[i], alpha=0.7)
+        axes[i].set_title(f'Гистограмма для канала {channel}')
+        axes[i].set_xlabel('Интенсивность пикселей')
+        axes[i].set_ylabel('Частота')
+    
+    plt.tight_layout()
+    plt.show()
 
 def main():
     pd.set_option('display.max_colwidth', None)
-    #copy_and_rename_dataset_with_annotation(DATASET_FOLDER, OUTPUT_FOLDER)
-    annotation_file = os.path.join(OUTPUT_FOLDER, CSV_FILE_NAME)
+    # 1-2.
+    copy_and_rename_dataset_with_annotation(DATASET_DIRECTORY, ANNOTATION_DIRECTORY)
+    annotation_file = os.path.join(ANNOTATION_DIRECTORY, FILE_NAME_ANNOTATION)
+    print(f"Датасет успешно скопирован и переименован в {ANNOTATION_DIRECTORY}")
+    print(f"Создан Файл-аннотация: {FILE_NAME_ANNOTATION}")
+    
+    class_name = 'tiger_thumb'
+    
+    # Создаем объект DataFrame 
     df = create_data_frame_from_csv(file_path = annotation_file, fields=ANNOTATION_FIELDS)
-
-    print(f"Датасет успешно скопирован и переименован в {OUTPUT_FOLDER}")
-    print(f"Файл-аннотация создан: {CSV_FILE_NAME}")
-    print(df)
-    # 3.
+    print(f"\nШаг 1-2. Создан и проверен на ошибки объект DataFrame:\n{df}\n")
+    
+    # 3. Добавление столбца с числовыми метками
     add_numeric_label(df, 'class_label')
-    print(df)
-    # 4.
+    print(f"\nШаг 3. Добавлен столбец с числовыми метками:\n{df}\n")
+    
+    # 4. Добавление столбцов с размерностью изображения
     add_image_dimensions(df)
-    print(df)
-    # 5.
+    print(f"\nШаг 4. Добавление столбцов с размерностью изображения:\n{df}\n")
+    
+    # 5. Вывод статистической информации
     image_stats = calculate_image_stats(df)
     class_label_sum = calculate_class_label_sum(df)
-    print("\nСтатистика для размеров изображений:")
-    print(image_stats)
-    print("\nСумма по меткам класса:")
-    print(class_label_sum)
+    print(f"\nШаг 5.")
+    print(f"Статистика для размеров изображений:\n{image_stats}")
+    print(f"\nСумма по меткам класса:\n{class_label_sum}\n")
+    # Гистограмма распределения по меткам
     plot_class_label_distribution(class_label_sum)
     
-    # 6. 
-    filtered_data = filter_by_class_label(df, label = 0)
-    print(filtered_data)
+    # Выбираем метку для фильтрации
+    label = 0 # можно также прописать строкой "leopard_thumb"
     
-    # 7. 
-    filtered_data = filter_by_dimensions_and_class(df, label = 0,  max_width = 300, max_height = 480)
-    print(filtered_data)
+    # 6. Фильтрация по метке класса
+
+    filtered_data = filter_by_class_label(df, label = label)
+    print(f"\nШаг 6. Фильтрация по метке класса ({label}):\n{filtered_data}\n")
     
-    # 8.
+    # 7. Фильтрация по метке класса, ширине, и высоте изображения
+    max_width = 300
+    max_height = 480
+    filtered_data = filter_by_dimensions_and_class(df, label = label,  max_width = max_width, max_height = max_height)
+    print(f"\nШаг 7. Фильтрация по метке класса ({label}), ширине (до {max_width}), и высоте (до {max_height}) изображения:\n{filtered_data}\n")
+    
+    # 8. Группировка по кол-ву пикселей
     # Добавляем столбец с количеством пикселей
     df_with_pixels = add_pixel_count(df)
-    print(df)
+    print(f"\nШаг 8. Добавлен столбец с кол-вом пикселей:\n{df}\n")
     # Вычисляем статистику по количеству пикселей
     pixel_statistics = calculate_pixel_stats(df_with_pixels)
-    print(pixel_statistics)
+    print(f"\nШаг 8. Вычисляем статистику по кол-ву пикселей:\n{pixel_statistics}\n")
     # Построим график нескольких изображений
-    plot_sample_images(df, label = 'tiger_thumb')
+    plot_sample_images(df, label = class_name)
     
-    # 9.
-    histograms = get_random_image_histogram(df, 'tiger_thumb')
-
+    # 9-10. Вычисление и вывод гистограмм по каждому каналу (R, G, B)
+    histograms = get_random_image_histogram(df, class_name)
+    plot_histograms(histograms)
     
 # Вызов функции main
 if __name__ == "__main__":
