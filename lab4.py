@@ -149,7 +149,32 @@ def plot_class_label_distribution(class_label_sum):
     
     plt.tight_layout()  # Улучшение компоновки, чтобы избежать обрезки изображения
     plt.show()
-    
+
+# 6. Написать функцию, которая на вход принимает DataFrame и метку класса,
+# а возвращает отфильтрованны по метке DataFrame. Условие фильтрации - в новый
+# DataFrame включаются те строки, для которых значение метки соответсвует заданному.
+def filter_by_class_label(df, label):
+    if(isinstance(label, int)):
+        filtered_df = df[df['numeric_label'] == label].copy()
+    elif(isinstance(label, str)):
+        filtered_df = df[df['class_label'] == label].copy()
+    return filtered_df
+
+# 7. Написать функцию, которая на вход принимает метку класса, максимальное значение ширины
+# и максимальное значение высоты изображения, а возвращает отфильтрованный по заданным параметрам DataFrame.
+# Условие фильтрации - в новый DataFrame включаются те строки, для которых размеры удовлетворяют следующему условию:
+# height  ≤  max_height and width  ≤  max_width, а метка класса соответствует указанной.
+def filter_by_dimensions_and_class(df, label, max_width, max_height):
+    if(isinstance(label, int)):
+        filter_label = 'numeric_label'
+
+    elif(isinstance(label, str)):   
+        filter_label = 'class_label'
+        
+    filtered_df = df[(df[filter_label] == label) & 
+                     (df['image_width'] <= max_width) & 
+                     (df['image_height'] <= max_height)].copy()    
+    return filtered_df
 
 def main():
     pd.set_option('display.max_colwidth', None)
@@ -158,15 +183,14 @@ def main():
     df = create_data_frame_from_csv(file_path = annotation_file, fields=ANNOTATION_FIELDS)
 
     print(f"Датасет успешно скопирован и переименован в {OUTPUT_FOLDER}")
-
     print(f"Файл-аннотация создан: {CSV_FILE_NAME}")
     print(df)
     # 3.
     add_numeric_label(df, 'class_label')
-    
+    print(df)
     # 4.
     add_image_dimensions(df)
-    
+    print(df)
     # 5.
     image_stats = calculate_image_stats(df)
     class_label_sum = calculate_class_label_sum(df)
@@ -175,6 +199,15 @@ def main():
     print("\nСумма по меткам класса:")
     print(class_label_sum)
     plot_class_label_distribution(class_label_sum)
+    
+    # 6. 
+    filtered_data = filter_by_class_label(df, label = 0)
+    print(filtered_data)
+    
+    # 7. 
+    filtered_data = filter_by_dimensions_and_class(df, label = 0,  max_width = 300, max_height = 480)
+    print(filtered_data)
+    
     
 # Вызов функции main
 if __name__ == "__main__":
