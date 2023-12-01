@@ -4,12 +4,16 @@ import csv
 import shutil
 import random
 from PIL import Image
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
 
 IMAGES_FIELDS = ['date', 'image_url', 'file_name', 'file_path']
 ANNOTATION_FIELDS = ['absolute_path', 'class_labell']
 OUTPUT_FOLDER = "dataset_annotations"
 CSV_FILE_NAME = "dataset_annotations.csv"
 DATASET_FOLDER = "dataset"
+IMAGE_STATS = ['image_height', 'image_width', 'image_channels']
 
 def copy_and_rename_dataset_with_annotation(dataset_folder, output_folder):
     """
@@ -93,7 +97,7 @@ def add_numeric_label(df, column_name):
     # Добавляем числовую метку в DataFrame
     df['numeric_label'] = df[column_name].map(class_labels)
 
-#4. Добавить в DataFrame три столбца, первый из которых содержит информацию
+# 4. Добавить в DataFrame три столбца, первый из которых содержит информацию
 # о высоте изображения, второй о ширине, а третий о глубине (количество каналов).
 def add_image_dimensions(df):
     # Получаем размеры изображений для каждого пути к файлу
@@ -102,6 +106,7 @@ def add_image_dimensions(df):
     # Разделяем результат на три столбца: высота, ширина, глубина
     df[['image_height', 'image_width', 'image_channels']] = pd.DataFrame(dimensions.tolist(), index=df.index)
 
+# Получаем размерность изображений и глубину
 def get_image_dimensions(file_path):
     try:
         with Image.open(file_path) as img:
@@ -117,6 +122,35 @@ def get_image_dimensions(file_path):
         print(f'Ошибка при получении размеров изображения {file_path}')
         return None
 
+# 5. С использованием Pandas вычислить статистическую информацию для столбцов,
+# содержащих информацию о размерах изображения (ширина, высота, глубина) и метках класса.
+# Describe. Для меток - табличку с суммой по метке, построить гистограмму или pie.
+# На основе полученной информации определить, является ли собранный вами набор сбалансированным 
+# (на основе статистической информации о столбце с метками класса). Баланс по числу элементов в каждом классе.
+    
+def calculate_image_stats(df):
+    # Статистика для столбцов с размерами изображений
+    image_stats = df[IMAGE_STATS].describe()
+    return image_stats
+
+def calculate_class_label_sum(df):
+    # Сумма по меткам класса
+    class_label_sum = df['class_label'].value_counts()
+    return class_label_sum    
+
+def plot_class_label_distribution(class_label_sum):
+    # Построение гистограммы для суммы по меткам класса
+    ax = class_label_sum.plot(kind='bar', figsize=(10, 6))
+    plt.xlabel('Метка класса')
+    plt.ylabel('Количество')
+    plt.title('Количество элементов по классам')
+    
+    ax.set_xticklabels(class_label_sum.index, rotation=45, ha='right')  # Поворот меток оси x
+    
+    plt.tight_layout()  # Улучшение компоновки, чтобы избежать обрезки изображения
+    plt.show()
+    
+
 def main():
     pd.set_option('display.max_colwidth', None)
     #copy_and_rename_dataset_with_annotation(DATASET_FOLDER, OUTPUT_FOLDER)
@@ -126,9 +160,22 @@ def main():
     print(f"Датасет успешно скопирован и переименован в {OUTPUT_FOLDER}")
 
     print(f"Файл-аннотация создан: {CSV_FILE_NAME}")
-    add_numeric_label(df, 'class_label')
-    add_image_dimensions(df)
     print(df)
+    # 3.
+    add_numeric_label(df, 'class_label')
+    
+    # 4.
+    add_image_dimensions(df)
+    
+    # 5.
+    image_stats = calculate_image_stats(df)
+    class_label_sum = calculate_class_label_sum(df)
+    print("\nСтатистика для размеров изображений:")
+    print(image_stats)
+    print("\nСумма по меткам класса:")
+    print(class_label_sum)
+    plot_class_label_distribution(class_label_sum)
+    
 # Вызов функции main
 if __name__ == "__main__":
     main()
