@@ -12,6 +12,7 @@ IMAGES_FIELDS = ['date', 'image_url', 'file_name', 'file_path']
 ANNOTATION_FIELDS = ['absolute_path', 'class_label']
 ANNOTATION_DIRECTORY = "dataset_annotations"
 STATS_DIMENSION = "stats_dimension"
+STATS_SUM_IMAGES = "stats_sum_images"
 STATS_PIXEL = "stats_pixel"
 FILE_NAME_ANNOTATION = "dataset_annotations.csv"
 DATASET_DIRECTORY = "dataset"
@@ -124,11 +125,13 @@ def get_image_dimensions(file_path):
 def calculate_image_stats(df):
     # Статистика для столбцов с размерами изображений
     image_stats = df[IMAGE_STATS].describe()
+    image_stats = image_stats.reset_index()
     return image_stats
 
 def calculate_class_label_sum(df):
     # Сумма по меткам класса
-    class_label_sum = df['class_label'].value_counts()
+    class_label_sum = df['class_label'].value_counts().to_frame().reset_index()
+    class_label_sum.columns = ['class_label', 'count']
     return class_label_sum    
 
 def plot_class_label_distribution(class_label_sum):

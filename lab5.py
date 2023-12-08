@@ -50,7 +50,7 @@ class ImageDownloadApp(QMainWindow):
 
         # 5. Вычисление статистики
         self.step5_button = QPushButton("Вычисление статистики по размерности")
-        self.step5_button.clicked.connect(self.step3_add_numeric_label)
+        self.step5_button.clicked.connect(self.step5_get_stats_dimensions)
         self.layout.addWidget(self.step5_button)
 
         # 6. Фильтрация по метке класса
@@ -91,9 +91,8 @@ class ImageDownloadApp(QMainWindow):
             print(f"Создан Файл-аннотация: {filen}")
             
             # Создаем объект DataFrame 
-            self.df = create_data_frame_from_csv(file_path = annotation_file, fields=ANNOTATION_FIELDS)
+
             self.load_dataframe(create_data_frame_from_csv(file_path = annotation_file, fields=ANNOTATION_FIELDS), ANNOTATION_DIRECTORY)
-            #self.load_dataset_from_dataframe(self.df)
             print(f"\nШаг 1-2. Создан и проверен на ошибки объект DataFrame")
             self.show_text_window(f"Выбранный csv файл: {file_name}")  
             
@@ -103,21 +102,16 @@ class ImageDownloadApp(QMainWindow):
         window.exec_()
 
     def switch_dataframe(self):
-        # Пример переключения между таблицами при нажатии на кнопку
         if len(self.dataframes) > 1:
-            # Если есть больше одного DataFrame в словаре, переключаемся на следующий
             dataframe_names = list(self.dataframes.keys())
             current_index = dataframe_names.index(self.current_dataframe)
             next_index = (current_index + 1) % len(dataframe_names)
             next_dataframe_name = dataframe_names[next_index]
 
-            # Убираем текущую таблицу
-            self.layout.removeWidget(self.tables[self.current_dataframe])
-            self.tables[self.current_dataframe].deleteLater()
-
-            # Добавляем новую таблицу
-            self.layout.addWidget(self.tables[next_dataframe_name])
-            self.current_dataframe = next_dataframe_name 
+            # Переключаем QStackedWidget на новую таблицу
+            self.dataset_table.setCurrentWidget(self.tables[next_dataframe_name])
+            self.current_dataframe = next_dataframe_name
+            self.update_window_size()   
             
     def load_dataframe(self, dataframe, table_name):
         # Сохраняем DataFrame в словаре
@@ -138,21 +132,26 @@ class ImageDownloadApp(QMainWindow):
 
         # Динамически регулируем ширину столбцов
         table.resizeColumnsToContents()
-        self.update_window_size()   
 
         # Добавляем таблицу в QStackedWidget
         table_index = self.dataset_table.addWidget(table)
+        self.current_dataframe = table_name
+        
+        self.tables[table_name] = table
         self.dataset_table.setCurrentIndex(table_index)
+        self.update_window_size()   
         
     def update_window_size(self):
         current_table = self.dataset_table.currentWidget()
         if current_table is not None:
             # Определение высоты таблицы в зависимости от количества записей
-            max_rows = 20
-            table_height = min(current_table.rowCount(), max_rows) * 25 + 100
-            
+            max_rows = 10
+            table_height = min(current_table.rowCount(), max_rows) * 40 + 300
+            table_width = current_table.columnCount() * 250 + 200
+            if(current_table.columnCount() > 3):
+                table_width = current_table.columnCount() * 180
             # Установка размеров окна
-            self.resize(self.width(), table_height)
+            self.resize(table_width, table_height)
          
     # загружаем датасет из объекта DataFrame     
     def load_dataset_from_dataframe(self, df):
@@ -216,6 +215,18 @@ class ImageDownloadApp(QMainWindow):
             pass
         else:
             self.show_text_window("Сначала выберите CSV Файл!")
+            
+    # Получение статистики по размерности и по сумме меток класса
+    def step5_get_stats_dimensions(self):
+        if self.dataframes[ANNOTATION_DIRECTORY] is not None:
+            image_stats = calculate_image_stats(self.dataframes[ANNOTATION_DIRECTORY])
+            self.load_dataframe(image_stats, STATS_DIMENSION)
+            class_label_sum = calculate_class_label_sum(self.dataframes[ANNOTATION_DIRECTORY])
+            self.load_dataframe(class_label_sum, STATS_SUM_IMAGES)
+            self.show_text_window("Получена статистика по размерности изображений и сумме меток классов")
+            pass
+        else:
+            self.show_text_window("Сначала выберите CSV Файл!")            
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
