@@ -1,9 +1,9 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QPushButton, QWidget, QFileDialog, QTableWidget, QTableWidgetItem, QSizePolicy, QLabel,  QStackedWidget
-import pandas as pd
-from datetime import datetime
+from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QVBoxLayout, QPushButton, QWidget, QFileDialog, QTableWidget, QTableWidgetItem, QSizePolicy, QLabel,  QStackedWidget
 from data_processing import *
 from info_display import TextDisplayWindow
+from class_label_input_dialog import ClassLabelInputDialog
+from data_input_dialog import DataInputDialog
 
 class ImageDownloadApp(QMainWindow):
     df = None
@@ -32,9 +32,10 @@ class ImageDownloadApp(QMainWindow):
         self.switch_dataframe_button.clicked.connect(self.switch_dataframe)
         self.layout.addWidget(self.switch_dataframe_button)
         
+        self.dataframe_label = QLabel("DataFrame: None")  # Изначально название DataFrame отображается как "None"
+        self.layout.addWidget(self.dataframe_label)
+        
         # Таблица для отображения csv
-        #self.dataset_table = QTableWidget()
-        #self.layout.addWidget(self.dataset_table)
         self.dataset_table= QStackedWidget()
         self.layout.addWidget(self.dataset_table)
 
@@ -55,16 +56,21 @@ class ImageDownloadApp(QMainWindow):
 
         # 6. Фильтрация по метке класса
         self.step6_button = QPushButton("Фильтрация по метке")
-        self.step6_button.clicked.connect(self.step3_add_numeric_label)
+        self.step6_button.clicked.connect(self.step6_filter_by_class_label)
         self.layout.addWidget(self.step6_button)
         
         # 7. Фильтрация по метке класса и размерности
         self.step7_button = QPushButton("Фильтрация по метке и размеру")
-        self.step7_button.clicked.connect(self.step3_add_numeric_label)
+        self.step7_button.clicked.connect(self.step7_filter_by_class_label_and_dimension)
         self.layout.addWidget(self.step7_button)
         # 8. Добавление количества пикселей
         self.step8_button = QPushButton("Добавление пикселей")
-        self.step8_button.clicked.connect(self.step3_add_numeric_label)
+        self.step8_button.clicked.connect(self.step8_add_pixel_count)
+        self.layout.addWidget(self.step8_button)
+        
+        # 9. Вычисление и вывод гистограмм по каждому каналу (R, G, B)
+        self.step8_button = QPushButton("Вывод гистограмм")
+        self.step8_button.clicked.connect(self.step9_get_random_image_histogram)
         self.layout.addWidget(self.step8_button)
         
         # Метка для отображения изображения
@@ -111,6 +117,7 @@ class ImageDownloadApp(QMainWindow):
             # Переключаем QStackedWidget на новую таблицу
             self.dataset_table.setCurrentWidget(self.tables[next_dataframe_name])
             self.current_dataframe = next_dataframe_name
+            self.dataframe_label.setText(f"DataFrame: {next_dataframe_name}")
             self.update_window_size()   
             
     def load_dataframe(self, dataframe, table_name):
@@ -136,7 +143,7 @@ class ImageDownloadApp(QMainWindow):
         # Добавляем таблицу в QStackedWidget
         table_index = self.dataset_table.addWidget(table)
         self.current_dataframe = table_name
-        
+        self.dataframe_label.setText(f"DataFrame: {table_name}")
         self.tables[table_name] = table
         self.dataset_table.setCurrentIndex(table_index)
         self.update_window_size()   
@@ -146,53 +153,12 @@ class ImageDownloadApp(QMainWindow):
         if current_table is not None:
             # Определение высоты таблицы в зависимости от количества записей
             max_rows = 10
-            table_height = min(current_table.rowCount(), max_rows) * 40 + 300
+            table_height = min(current_table.rowCount(), max_rows) * 40 + 350
             table_width = current_table.columnCount() * 250 + 200
             if(current_table.columnCount() > 3):
                 table_width = current_table.columnCount() * 180
             # Установка размеров окна
             self.resize(table_width, table_height)
-         
-    # загружаем датасет из объекта DataFrame     
-    def load_dataset_from_dataframe(self, df):
-        try:
-            self.df = df
-                
-            # Очистка QTableWidget перед добавлением новых данных
-            self.dataset_table.clear()
-            self.dataset_table.setRowCount(0)
-            self.dataset_table.setColumnCount(len(self.df.columns))
-
-            # Установка заголовков столбцов
-            self.dataset_table.setHorizontalHeaderLabels(self.df.columns)
-
-            # Заполнение таблицы данными из DataFrame
-            for row in range(len(self.df)):
-                self.dataset_table.insertRow(row)
-                for col in range(len(self.df.columns)):
-                    item = QTableWidgetItem(str(self.df.iloc[row, col]))
-                    self.dataset_table.setItem(row, col, item)
-
-            # Динамическое изменение размеров столбцов
-            self.dataset_table.resizeColumnsToContents()
-            max_column_width = 550
-            for col in range(self.dataset_table.columnCount()):
-                current_width = self.dataset_table.columnWidth(col)
-                if current_width > max_column_width:
-                    self.dataset_table.setColumnWidth(col, max_column_width)
-            # Измерение ширины всех столбцов
-            total_width = sum(self.dataset_table.columnWidth(col) for col in range(self.dataset_table.columnCount()))
-
-            # Определение высоты окна в зависимости от количества записей в таблице
-            max_rows = 20
-            height = min(len(self.df), max_rows) * 25 + 100  # Примерный размер строки: 25 пикселей
-
-            # Установка размеров окна
-            self.resize(total_width + 100, height)
-
-        except Exception as e:
-            self.show_text_window(f"Ошибка загрузки датасета: {str(e)}")
-            self.df = None  
 
     # Добавление числовой метки в DataFrame
     def step3_add_numeric_label(self):
@@ -221,9 +187,66 @@ class ImageDownloadApp(QMainWindow):
         if self.dataframes[ANNOTATION_DIRECTORY] is not None:
             image_stats = calculate_image_stats(self.dataframes[ANNOTATION_DIRECTORY])
             self.load_dataframe(image_stats, STATS_DIMENSION)
+            self.show_text_window("Получена статистика по размерности изображений!")
             class_label_sum = calculate_class_label_sum(self.dataframes[ANNOTATION_DIRECTORY])
             self.load_dataframe(class_label_sum, STATS_SUM_IMAGES)
-            self.show_text_window("Получена статистика по размерности изображений и сумме меток классов")
+            self.show_text_window("Получена статистика по сумме меток классов!")
+            # Гистограмма распределения по меткам
+            plot_class_label_distribution(class_label_sum)
+            pass
+        else:
+            self.show_text_window("Сначала выберите CSV Файл!")         
+    
+    # Получение статистики по размерности и по сумме меток класса
+    def step6_filter_by_class_label(self):
+        if self.dataframes[ANNOTATION_DIRECTORY] is not None:
+            dialog = ClassLabelInputDialog()
+            if dialog.exec_():
+                class_label = dialog.result_label
+                filtered_data = filter_by_class_label(self.dataframes[ANNOTATION_DIRECTORY], label = class_label)
+                self.load_dataframe(filtered_data, FILTER_LABEL)
+                self.show_text_window(f"Датасет отфильтрован по метке класса = {class_label} !")
+                pass
+        else:
+            self.show_text_window("Сначала выберите CSV Файл!")       
+            
+    # Получение статистики по размерности и по сумме меток класса
+    def step7_filter_by_class_label_and_dimension(self):
+        if self.dataframes[ANNOTATION_DIRECTORY] is not None:
+            dialog = DataInputDialog()
+            if dialog.exec_() == QDialog.Accepted:
+                class_label = dialog.class_label
+                width = dialog.width
+                height = dialog.height
+                filtered_data = filter_by_dimensions_and_class(self.dataframes[ANNOTATION_DIRECTORY], label = class_label, max_width = width, max_height = height)
+                self.load_dataframe(filtered_data, FILTRER_DIMENSION)
+                self.show_text_window(f"Датасет отфильтрован по метке класса и размерностям!")
+                pass
+        else:
+            self.show_text_window("Сначала выберите CSV Файл!")     
+            
+    # Добавление размерности в DataFrame
+    def step8_add_pixel_count(self):
+        if self.dataframes[ANNOTATION_DIRECTORY] is not None:
+            add_pixel_count(self.dataframes[ANNOTATION_DIRECTORY])
+            self.load_dataframe(self.dataframes[ANNOTATION_DIRECTORY], ANNOTATION_DIRECTORY)
+            self.show_text_window("Добавлен столбец с количеством пикселей!")
+            pixel_statistics = calculate_pixel_stats(self.dataframes[ANNOTATION_DIRECTORY])
+            self.load_dataframe(pixel_statistics, STATS_PIXEL)
+            self.show_text_window("Получена статистика по количеству пикселей!")
+            dialog = ClassLabelInputDialog()
+            if dialog.exec_():
+                plot_sample_images(self.dataframes[ANNOTATION_DIRECTORY], label =  dialog.result_label)
+            pass
+        else:
+            self.show_text_window("Сначала выберите CSV Файл!")
+
+    def step9_get_random_image_histogram(self):
+        if self.dataframes[ANNOTATION_DIRECTORY] is not None:
+            dialog = ClassLabelInputDialog()
+            if dialog.exec_():
+                histograms = get_random_image_histogram(self.dataframes[ANNOTATION_DIRECTORY], dialog.result_label)
+                plot_histograms(histograms)
             pass
         else:
             self.show_text_window("Сначала выберите CSV Файл!")            

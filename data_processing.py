@@ -12,6 +12,8 @@ IMAGES_FIELDS = ['date', 'image_url', 'file_name', 'file_path']
 ANNOTATION_FIELDS = ['absolute_path', 'class_label']
 ANNOTATION_DIRECTORY = "dataset_annotations"
 STATS_DIMENSION = "stats_dimension"
+FILTER_LABEL = "filter_label"
+FILTRER_DIMENSION = "filter_dimension"
 STATS_SUM_IMAGES = "stats_sum_images"
 STATS_PIXEL = "stats_pixel"
 FILE_NAME_ANNOTATION = "dataset_annotations.csv"
@@ -150,9 +152,9 @@ def plot_class_label_distribution(class_label_sum):
 # а возвращает отфильтрованны по метке DataFrame. Условие фильтрации - в новый
 # DataFrame включаются те строки, для которых значение метки соответсвует заданному.
 def filter_by_class_label(df, label):
-    if(isinstance(label, int)):
-        filtered_df = df[df['numeric_label'] == label].copy()
-    elif(isinstance(label, str)):
+    if(label.isnumeric()):
+        filtered_df = df[df['numeric_label'] == int(label)].copy()
+    else:
         filtered_df = df[df['class_label'] == label].copy()
     return filtered_df
 
@@ -161,15 +163,16 @@ def filter_by_class_label(df, label):
 # Условие фильтрации - в новый DataFrame включаются те строки, для которых размеры удовлетворяют следующему условию:
 # height  ≤  max_height and width  ≤  max_width, а метка класса соответствует указанной.
 def filter_by_dimensions_and_class(df, label, max_width, max_height):
-    if(isinstance(label, int)):
+    if(label.isnumeric()):
         filter_label = 'numeric_label'
-
-    elif(isinstance(label, str)):   
+        filtered_df = df[(df[filter_label] == int(label)) & 
+                         (df['image_width'] <= int(max_width)) & 
+                         (df['image_height'] <= int(max_height))].copy()    
+    else:   
         filter_label = 'class_label'
-        
-    filtered_df = df[(df[filter_label] == label) & 
-                     (df['image_width'] <= max_width) & 
-                     (df['image_height'] <= max_height)].copy()    
+        filtered_df = df[(df[filter_label] == label) & 
+                         (df['image_width'] <= int(max_width)) & 
+                         (df['image_height'] <= int(max_height))].copy()    
     return filtered_df
 
 # 8. Выполнить группировку DataFrame по метке класса с вычислением максимального, минимального и среднего значения
@@ -183,6 +186,7 @@ def add_pixel_count(df):
 def calculate_pixel_stats(df):
     # Вычисляет статистику по количеству пикселей для каждой метки класса
     pixel_stats = df.groupby('class_label')['pixel_count'].agg(['max', 'min', 'mean'])
+    pixel_stats = pixel_stats.reset_index()
     return pixel_stats
 
 def plot_sample_images(df, label, num_images=5):
